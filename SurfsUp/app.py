@@ -8,8 +8,8 @@ from sqlalchemy import create_engine, func
 
 from flask import Flask, jsonify
 from dateutil.relativedelta import relativedelta
-from datetime import datetime as dt
-
+import datetime as dt
+from datetime import datetime as dtime
 
 #################################################
 # Database Setup
@@ -61,11 +61,15 @@ def precipitation():
     # Create our session (link) from Python to the DB
     session = Session(engine)
 
+    # Query precipitation values for latest year
     from_date = dt.date(2017,8,23) - relativedelta(years=1)
     output = session.query(Measurement.date, Measurement.prcp).filter(Measurement.date >= from_date).order_by(Measurement.date)
 
+    #Close Session
     session.close()
 
+
+    # Create a dictionary from the row data and append to a list of all precipitation measurements
     all_measurements = []
     
     for date, prcp in output:
@@ -78,10 +82,16 @@ def precipitation():
 
 @app.route("/api/v1.0/stations")
 def stations():
+    # Create our session (link) from Python to the DB
     session = Session(engine)
+
+    # Query all stations
     stations = session.query(Station)
+
+    #Close Session
     session.close()
 
+    # Create a dictionary from the row data and append to a list of all stations
     all_stations = []
 
     for row in stations:
@@ -101,12 +111,15 @@ def tobs():
     # Create our session (link) from Python to the DB
     session = Session(engine)
 
+    # Query temperature values for latest year for the most active station
     from_date = dt.date(2017,8,23) - relativedelta(years=1)
     output = session.query(Measurement.date, Measurement.tobs).filter(Measurement.station == 'USC00519281')\
     .filter(Measurement.date >= from_date).order_by(Measurement.date)
 
+    #Close Session
     session.close()
 
+    # Create a dictionary from the row data and append to a list of all temperature measurements
     all_temps = []
     
     for date, tobs in output:
@@ -121,12 +134,19 @@ def tobs():
 @app.route("/api/v1.0/<start>")
 def summary_from(start):
 
-    from_date = dt.strptime(start, '%Y-%m-%d')
+    from_date = dtime.strptime(start, '%Y-%m-%d')
+
+    # Create our session (link) from Python to the DB
     session = Session(engine)
+
+    # Query summary values from the start date forward
     summary_measurements = session.query(func.min(Measurement.tobs), func.max(Measurement.tobs), func.avg(Measurement.tobs)).filter(Measurement.station == 'USC00519281')\
                             .filter(Measurement.date >= from_date).first()
+    
+    #Close Session
     session.close()
 
+    # Create a dictionary from the summary information
     summary_results = {}
     summary_results["Min"] = summary_measurements[0]
     summary_results["Max"] = summary_measurements[1]
@@ -137,14 +157,20 @@ def summary_from(start):
 @app.route("/api/v1.0/<start>/<end>")
 def summary_fromto(start, end):
 
-    from_date = dt.strptime(start, '%Y-%m-%d')
-    to_date = dt.strptime(end, '%Y-%m-%d')
+    from_date = dtime.strptime(start, '%Y-%m-%d')
+    to_date = dtime.strptime(end, '%Y-%m-%d')
+
+    # Create our session (link) from Python to the DB
     session = Session(engine)
+
+    # Query summary values from between the start and end dates
     summary_measurements = session.query(func.min(Measurement.tobs), func.max(Measurement.tobs), func.avg(Measurement.tobs)).filter(Measurement.station == 'USC00519281')\
                             .filter(Measurement.date >= from_date).filter(Measurement.date <= to_date).first()
+    
+    #Close Session
     session.close()
 
-    
+    # Create a dictionary from the summary information
     summary_results = {}
     summary_results["Min"] = summary_measurements[0]
     summary_results["Max"] = summary_measurements[1]
